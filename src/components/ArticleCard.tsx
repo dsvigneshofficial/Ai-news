@@ -28,10 +28,7 @@ const categoryColors: Record<string, string> = {
 
 export function ArticleCard({ article }: ArticleCardProps) {
   return (
-    <Link
-      href={`/article/${article.id}`}
-      className="group flex flex-col bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 animate-fade-in"
-    >
+    <div className="group relative flex flex-col bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 animate-fade-in">
       {/* Image */}
       <div className="relative h-48 overflow-hidden">
         {article.imageUrl ? (
@@ -61,9 +58,14 @@ export function ArticleCard({ article }: ArticleCardProps) {
           {article.source}
         </span>
 
-        {/* Title */}
+        {/* Title - stretched link */}
         <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-2 mb-2 group-hover:text-primary-500 transition-colors">
-          {article.title}
+          <Link
+            href={`/article/${article.id}`}
+            className="after:absolute after:inset-0"
+          >
+            {article.title}
+          </Link>
         </h3>
 
         {/* Description */}
@@ -83,9 +85,9 @@ export function ArticleCard({ article }: ArticleCardProps) {
               {article.readingTime} min
             </span>
           </div>
-          <BookmarkButton article={article} />
+          <BookmarkButton article={article} className="relative z-10" />
         </div>
       </div>
-    </Link>
+    </div>
   );
 }

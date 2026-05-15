@@ -48,11 +48,11 @@ export function NewsProvider({ children }: { children: React.ReactNode }) {
       }
       const data = await response.json();
       setArticles(data.articles || []);
-      setLastFetched(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
+      setLastFetched(new Date());
     }
   }, []);
 

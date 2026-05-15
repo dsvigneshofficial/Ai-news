@@ -24,10 +24,10 @@ export function truncateText(text: string, maxLength: number): string {
 }
 
 /**
- * Generate a deterministic ID from title and source using a simple hash
+ * Generate a deterministic ID from title, source, and optionally URL using a simple hash
  */
-export function generateArticleId(title: string, source: string): string {
-  const input = `${title}-${source}`.toLowerCase().trim();
+export function generateArticleId(title: string, source: string, url?: string): string {
+  const input = `${title}-${source}${url ? `-${url}` : ''}`.toLowerCase().trim();
   let hash = 0;
   for (let i = 0; i < input.length; i++) {
     const char = input.charCodeAt(i);

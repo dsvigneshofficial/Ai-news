@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchAllNews } from '@/lib/news-fetcher';
+import { getCachedNews } from '@/lib/news-fetcher';
 import { Category } from '@/types/news';
-
-export const revalidate = 300; // 5 minutes
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,7 +10,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
 
-    let articles = await fetchAllNews();
+    let articles = await getCachedNews();
 
     // Filter by category
     if (category && category !== 'all') {

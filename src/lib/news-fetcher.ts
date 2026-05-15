@@ -75,7 +75,7 @@ async function fetchSingleRSSFeed(source: NewsSource): Promise<Article[]> {
       const content = item.content || item.contentSnippet || '';
 
       return {
-        id: generateArticleId(title, source.name),
+        id: generateArticleId(title, source.name, item.link || ''),
         title,
         description: description.slice(0, 300),
         content,
@@ -192,7 +192,7 @@ export async function fetchNewsAPI(): Promise<Article[]> {
         const content = item.content || description;
 
         return {
-          id: generateArticleId(title, item.source?.name || 'NewsAPI'),
+          id: generateArticleId(title, item.source?.name || 'NewsAPI', item.url || ''),
           title,
           description,
           content,

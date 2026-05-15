@@ -1,6 +1,6 @@
 import Parser from 'rss-parser';
 import { Article, NewsSource, Category } from '@/types/news';
-import { generateArticleId, estimateReadingTime, classifyCategory } from '@/lib/utils';
+import { generateArticleId, estimateReadingTime, classifyCategory, stripHtml, extractCleanContent } from '@/lib/utils';
 
 const parser = new Parser({
   timeout: 10000,
@@ -71,13 +71,15 @@ async function fetchSingleRSSFeed(source: NewsSource): Promise<Article[]> {
     const feed = await parser.parseURL(source.url);
     const articles: Article[] = (feed.items || []).slice(0, 20).map((item) => {
       const title = item.title || 'Untitled';
-      const description = item.contentSnippet || item.content || '';
-      const content = item.content || item.contentSnippet || '';
+      const rawDescription = item.contentSnippet || item.content || '';
+      const rawContent = item.content || item.contentSnippet || '';
+      const description = stripHtml(rawDescription).slice(0, 300);
+      const content = extractCleanContent(rawContent);
 
       return {
         id: generateArticleId(title, source.name, item.link || ''),
         title,
-        description: description.slice(0, 300),
+        description,
         content,
         source: source.name,
         sourceUrl: feed.link || source.url,
@@ -102,7 +104,7 @@ async function fetchSingleRSSFeed(source: NewsSource): Promise<Article[]> {
  * Extract image URL from RSS feed item
  */
 function extractImageUrl(item: Record<string, unknown>): string {
-  // Check for media content
+  // Check for media:content
   if (item['media:content'] && typeof item['media:content'] === 'object') {
     const media = item['media:content'] as Record<string, unknown>;
     if (media.$ && typeof media.$ === 'object') {
@@ -111,9 +113,41 @@ function extractImageUrl(item: Record<string, unknown>): string {
     }
   }
 
+  // Check for media:thumbnail
+  if (item['media:thumbnail'] && typeof item['media:thumbnail'] === 'object') {
+    const thumb = item['media:thumbnail'] as Record<string, unknown>;
+    if (thumb.$ && typeof thumb.$ === 'object') {
+      const attrs = thumb.$ as Record<string, string>;
+      if (attrs.url) return attrs.url;
+    }
+  }
+
+  // Check for media:group -> media:content
+  if (item['media:group'] && typeof item['media:group'] === 'object') {
+    const group = item['media:group'] as Record<string, unknown>;
+    if (group['media:content'] && typeof group['media:content'] === 'object') {
+      const mc = group['media:content'] as Record<string, unknown>;
+      if (mc.$ && typeof mc.$ === 'object') {
+        const attrs = mc.$ as Record<string, string>;
+        if (attrs.url) return attrs.url;
+      }
+    }
+  }
+
+  // Check for itunes:image
+  if (item.itunes && typeof item.itunes === 'object') {
+    const itunes = item.itunes as Record<string, unknown>;
+    if (itunes.image && typeof itunes.image === 'string') {
+      return itunes.image;
+    }
+  }
+
   // Check for enclosure
   if (item.enclosure && typeof item.enclosure === 'object') {
     const enclosure = item.enclosure as Record<string, string>;
+    if (enclosure.url && enclosure.type && enclosure.type.startsWith('image')) {
+      return enclosure.url;
+    }
     if (enclosure.url) return enclosure.url;
   }
 
@@ -121,6 +155,12 @@ function extractImageUrl(item: Record<string, unknown>): string {
   if (item.content && typeof item.content === 'string') {
     const imgMatch = item.content.match(/<img[^>]+src="([^"]+)"/);
     if (imgMatch && imgMatch[1]) return imgMatch[1];
+  }
+
+  // Try og:image pattern in content
+  if (item.content && typeof item.content === 'string') {
+    const ogMatch = item.content.match(/og:image[^>]*content="([^"]+)"/);
+    if (ogMatch && ogMatch[1]) return ogMatch[1];
   }
 
   return '';
@@ -188,8 +228,10 @@ export async function fetchNewsAPI(): Promise<Article[]> {
         publishedAt?: string;
       }) => {
         const title = item.title || 'Untitled';
-        const description = item.description || '';
-        const content = item.content || description;
+        const rawDescription = item.description || '';
+        const rawContent = item.content || rawDescription;
+        const description = stripHtml(rawDescription);
+        const content = extractCleanContent(rawContent);
 
         return {
           id: generateArticleId(title, item.source?.name || 'NewsAPI', item.url || ''),
@@ -288,6 +330,13 @@ export async function fetchAllNews(): Promise<Article[]> {
 
   // Deduplicate
   allArticles = deduplicateArticles(allArticles);
+
+  // Filter out articles with fewer than 500 words of clean content
+  allArticles = allArticles.filter((article) => {
+    const text = article.content || article.description || '';
+    const wordCount = text.split(/\s+/).filter(Boolean).length;
+    return wordCount >= 500;
+  });
 
   // Mark trending
   allArticles = markTrending(allArticles);

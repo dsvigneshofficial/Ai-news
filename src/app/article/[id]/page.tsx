@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, Clock, ExternalLink, User, Calendar } from 'lucide-react';
+import { ArrowLeft, Clock, ExternalLink, Calendar } from 'lucide-react';
 import { Article } from '@/types/news';
 import { formatDate, cn } from '@/lib/utils';
 import { getCategoryLabel } from '@/lib/categories';
@@ -136,12 +136,6 @@ export default function ArticlePage() {
 
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
             <span className="font-medium text-primary-500">{article.source}</span>
-            {article.author && (
-              <span className="flex items-center gap-1">
-                <User className="w-4 h-4" />
-                {article.author}
-              </span>
-            )}
             <span className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />
               {formatDate(article.publishedAt)}
@@ -165,10 +159,20 @@ export default function ArticlePage() {
         )}
 
         {/* Article content */}
-        <article className="prose prose-lg dark:prose-invert max-w-none mb-8">
-          <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line text-base">
-            {article.content || article.description}
-          </p>
+        <article className="max-w-none mb-8">
+          <div className="space-y-4">
+            {(article.content || article.description)
+              .split(/\n\n+/)
+              .filter((para) => para.trim().length > 0)
+              .map((paragraph, index) => (
+                <p
+                  key={index}
+                  className="text-gray-700 dark:text-gray-300 text-lg leading-8"
+                >
+                  {paragraph.trim()}
+                </p>
+              ))}
+          </div>
         </article>
 
         {/* Action bar */}

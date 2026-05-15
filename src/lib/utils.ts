@@ -3,6 +3,88 @@ import { Category } from '@/types/news';
 import { categories } from '@/lib/categories';
 
 /**
+ * Decode common HTML entities to their text equivalents
+ */
+function decodeHtmlEntities(text: string): string {
+  const entities: Record<string, string> = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#039;': "'",
+    '&apos;': "'",
+    '&#038;': '&',
+    '&nbsp;': ' ',
+    '&#8217;': '\u2019',
+    '&#8216;': '\u2018',
+    '&#8220;': '\u201C',
+    '&#8221;': '\u201D',
+    '&#8211;': '\u2013',
+    '&#8212;': '\u2014',
+    '&#8230;': '\u2026',
+  };
+
+  let result = text;
+  for (const [entity, char] of Object.entries(entities)) {
+    result = result.split(entity).join(char);
+  }
+  // Handle numeric entities like &#123;
+  result = result.replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
+  // Handle hex entities like &#x1F4A1;
+  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  return result;
+}
+
+/**
+ * Strip all HTML tags from a string and decode entities, returning clean plain text
+ */
+export function stripHtml(html: string): string {
+  if (!html) return '';
+  let text = html;
+  // Remove script and style elements entirely
+  text = text.replace(/<script[\s\S]*?<\/script>/gi, '');
+  text = text.replace(/<style[\s\S]*?<\/style>/gi, '');
+  // Remove all HTML tags
+  text = text.replace(/<[^>]*>/g, '');
+  // Decode HTML entities
+  text = decodeHtmlEntities(text);
+  // Collapse multiple whitespace into single space
+  text = text.replace(/\s+/g, ' ').trim();
+  return text;
+}
+
+/**
+ * Strip HTML but preserve paragraph breaks (replace block-level closing tags with newlines)
+ */
+export function extractCleanContent(html: string): string {
+  if (!html) return '';
+  let text = html;
+  // Remove script and style elements entirely
+  text = text.replace(/<script[\s\S]*?<\/script>/gi, '');
+  text = text.replace(/<style[\s\S]*?<\/style>/gi, '');
+  // Replace block-level closing tags and <br> with double newlines
+  text = text.replace(/<\/p>/gi, '\n\n');
+  text = text.replace(/<\/div>/gi, '\n\n');
+  text = text.replace(/<\/h[1-6]>/gi, '\n\n');
+  text = text.replace(/<\/li>/gi, '\n');
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+  // Remove all remaining HTML tags
+  text = text.replace(/<[^>]*>/g, '');
+  // Decode HTML entities
+  text = decodeHtmlEntities(text);
+  // Collapse multiple blank lines into double newline
+  text = text.replace(/\n{3,}/g, '\n\n');
+  // Trim whitespace from each line
+  text = text
+    .split('\n')
+    .map((line) => line.trim())
+    .join('\n');
+  // Trim overall
+  text = text.trim();
+  return text;
+}
+
+/**
  * Format a date string to relative time (e.g., "2 hours ago", "3 days ago")
  */
 export function formatDate(date: string): string {

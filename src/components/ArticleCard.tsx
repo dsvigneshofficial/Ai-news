@@ -26,6 +26,23 @@ const categoryColors: Record<string, string> = {
   'all': 'bg-gray-500',
 };
 
+function getCategoryEmoji(category: string): string {
+  const emojis: Record<string, string> = {
+    'machine-learning': '\uD83E\uDDE0',
+    'llms': '\uD83D\uDCAC',
+    'computer-vision': '\uD83D\uDC41\uFE0F',
+    'robotics': '\uD83E\uDD16',
+    'ai-ethics': '\u2696\uFE0F',
+    'generative-ai': '\uD83C\uDFA8',
+    'neural-networks': '\uD83D\uDD17',
+    'ai-research': '\uD83D\uDD2C',
+    'ai-business': '\uD83D\uDCBC',
+    'ai-tools': '\uD83D\uDEE0\uFE0F',
+    'all': '\uD83E\uDD16',
+  };
+  return emojis[category] || '\uD83E\uDD16';
+}
+
 export function ArticleCard({ article }: ArticleCardProps) {
   return (
     <div className="group relative flex flex-col bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 animate-fade-in">
@@ -38,7 +55,16 @@ export function ArticleCard({ article }: ArticleCardProps) {
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary-400 to-accent-500" />
+          <div className="w-full h-full bg-gradient-to-br from-primary-400 to-accent-500 flex items-center justify-center">
+            <div className="text-center">
+              <span className="text-4xl block mb-2">
+                {getCategoryEmoji(article.category)}
+              </span>
+              <span className="text-white/80 text-xs font-medium uppercase tracking-wider">
+                {getCategoryLabel(article.category)}
+              </span>
+            </div>
+          </div>
         )}
         {/* Category badge */}
         <span
@@ -76,9 +102,6 @@ export function ArticleCard({ article }: ArticleCardProps) {
         {/* Footer */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
           <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-            {article.author && (
-              <span className="truncate max-w-[100px]">{article.author}</span>
-            )}
             <span>{formatDate(article.publishedAt)}</span>
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />

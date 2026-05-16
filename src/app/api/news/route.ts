@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCachedNews } from '@/lib/news-fetcher';
+import { fallbackArticles } from '@/lib/fallback-articles';
 import { Category } from '@/types/news';
 
 export async function GET(request: NextRequest) {
@@ -7,10 +8,30 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const category = searchParams.get('category') as Category | null;
     const search = searchParams.get('search');
+    const id = searchParams.get('id');
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
 
     let articles = await getCachedNews();
+
+    // Ensure we always have content — merge fallbacks if live fetch returned nothing
+    if (!articles || articles.length === 0) {
+      articles = fallbackArticles;
+    }
+
+    // Single article lookup by id
+    if (id) {
+      const article = articles.find((a) => a.id === id);
+      if (!article) {
+        return NextResponse.json({ error: 'Article not found' }, { status: 404 });
+      }
+      const related = articles
+        .filter((a) => a.category === article.category && a.id !== article.id)
+        .slice(0, 3);
+      return NextResponse.json({ article, related }, {
+        headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+      });
+    }
 
     // Filter by category
     if (category && category !== 'all') {
@@ -31,14 +52,15 @@ export async function GET(request: NextRequest) {
     const total = articles.length;
 
     // Apply pagination
-    articles = articles.slice(offset, offset + limit);
+    const paginated = articles.slice(offset, offset + limit);
 
     return NextResponse.json(
       {
-        articles,
+        articles: paginated,
         total,
         page: Math.floor(offset / limit) + 1,
         limit,
+        hasMore: offset + limit < total,
       },
       {
         headers: {
@@ -49,12 +71,20 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching news:', error);
 
+    // Even on error, return fallback articles so the UI always has content
     return NextResponse.json(
       {
-        error: 'Failed to fetch news articles',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        articles: fallbackArticles,
+        total: fallbackArticles.length,
+        page: 1,
+        limit: fallbackArticles.length,
+        hasMore: false,
+        _fromFallback: true,
       },
-      { status: 500 }
+      {
+        status: 200,
+        headers: { 'Cache-Control': 'no-store' },
+      }
     );
   }
 }

@@ -8,7 +8,7 @@
   }
 
   body {
-    @apply bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors duration-200;
+    @apply bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors duration-200;
   }
 
   ::selection {
@@ -20,15 +20,12 @@
     width: 6px;
     height: 6px;
   }
-
   ::-webkit-scrollbar-track {
     @apply bg-transparent;
   }
-
   ::-webkit-scrollbar-thumb {
     @apply bg-gray-300 dark:bg-gray-700 rounded-full;
   }
-
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-gray-400 dark:bg-gray-600;
   }
@@ -36,7 +33,7 @@
 
 @layer components {
   .glass {
-    @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border border-gray-200/50 dark:border-gray-700/50;
+    @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200/60 dark:border-gray-700/60 shadow-sm;
   }
 
   .line-clamp-2 {
@@ -57,9 +54,26 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Article prose typography */
+  .article-prose p {
+    @apply text-gray-700 dark:text-gray-300 leading-relaxed text-base lg:text-lg mb-4;
+  }
+  .article-prose h2,
+  .article-prose h3 {
+    @apply font-bold text-gray-900 dark:text-white mt-8 mb-3;
+  }
+  .article-prose h2 {
+    @apply text-2xl;
+  }
+  .article-prose h3 {
+    @apply text-xl;
+  }
+  .article-prose strong {
+    @apply font-semibold text-gray-900 dark:text-white;
   }
 }
 
@@ -79,19 +93,34 @@
     background: linear-gradient(
       90deg,
       transparent 0%,
-      rgba(255, 255, 255, 0.1) 50%,
+      rgba(255, 255, 255, 0.08) 50%,
       transparent 100%
     );
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
   }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-500 to-accent-500 bg-clip-text text-transparent;
+  }
 }
 
 @keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
 }

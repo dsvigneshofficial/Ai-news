@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Clock, TrendingUp, ExternalLink } from 'lucide-react';
 import { Article } from '@/types/news';
-import { formatDate, cn } from '@/lib/utils';
+import { formatDate, cn, cleanHtml } from '@/lib/utils';
 import { getCategoryLabel } from '@/lib/categories';
 import { BookmarkButton } from '@/components/BookmarkButton';
 
@@ -100,13 +100,13 @@ export function ArticleCard({ article, featured = false }: ArticleCardProps) {
           featured ? 'text-lg line-clamp-3' : 'text-base line-clamp-2'
         )}>
           <Link href={`/article/${article.id}`} className="after:absolute after:inset-0">
-            {article.title}
+            {cleanHtml(article.title)}
           </Link>
         </h3>
 
         {/* Description */}
         <p className={cn('text-sm text-gray-500 dark:text-gray-400 flex-1 leading-relaxed', featured ? 'line-clamp-3' : 'line-clamp-2')}>
-          {article.description}
+          {cleanHtml(article.description)}
         </p>
 
         {/* Footer */}

@@ -14,7 +14,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Article } from '@/types/news';
-import { formatDate, cn } from '@/lib/utils';
+import { formatDate, cn, cleanHtml } from '@/lib/utils';
 import { getCategoryLabel } from '@/lib/categories';
 import { BookmarkButton } from '@/components/BookmarkButton';
 import { ShareButton } from '@/components/ShareButton';
@@ -50,22 +50,58 @@ const GRADIENT: Record<string, string> = {
   all: 'from-gray-700 to-gray-500',
 };
 
-// ─── ArticleContent ─────────────────────────────────────────────────────────
-// Renders plain-text content that may contain **bold** / section headings.
-// Handles both raw-text and HTML-stripped content from RSS feeds.
-function ArticleContent({ content, sourceUrl }: { content: string; sourceUrl: string }) {
-  const isTruncated =
-    content.endsWith('…') ||
-    content.endsWith('...') ||
-    content.length < 400;
+// ─── Strip HTML from content at render time ─────────────────────────────────
+// This ensures that even if the server sends content with HTML tags/entities
+// (e.g. Google News RSS wraps titles in <a> and <font> tags), we show clean text.
+function cleanTextForDisplay(raw: string): string {
+  return raw
+    // Remove <style> / <script> blocks entirely
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    // Replace <br>, <p>, <div> endings with newlines so we get paragraph breaks
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n\n')
+    // Strip remaining tags
+    .replace(/<[^>]+>/g, '')
+    // Decode common HTML entities
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#\d+;/g, '')
+    // Collapse whitespace within lines
+    .replace(/[ \t]+/g, ' ')
+    // Collapse more than 2 newlines into 2
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 
-  const paragraphs = content.split(/\n\n+/).filter(Boolean);
+// ─── ArticleContent ─────────────────────────────────────────────────────────
+// Renders article body text with paragraph breaks and basic formatting.
+function ArticleContent({ content, sourceUrl }: { content: string; sourceUrl: string }) {
+  // First, ensure we're working with clean plain text (no HTML tags/entities)
+  const cleanContent = cleanTextForDisplay(content);
+
+  const isTruncated =
+    cleanContent.endsWith('…') ||
+    cleanContent.endsWith('...') ||
+    cleanContent.length < 400;
+
+  // Split into paragraphs on double newlines
+  const paragraphs = cleanContent.split(/\n\n+/).filter((p) => p.trim().length > 0);
 
   return (
     <div className="space-y-4">
       {paragraphs.map((para, i) => {
+        const trimmed = para.trim();
+
         // Standalone **Heading**
-        const headingMatch = para.match(/^\*\*(.+?)\*\*$/);
+        const headingMatch = trimmed.match(/^\*\*(.+?)\*\*$/);
         if (headingMatch) {
           return (
             <h3
@@ -78,7 +114,7 @@ function ArticleContent({ content, sourceUrl }: { content: string; sourceUrl: st
         }
 
         // Regular paragraph with possible inline **bold**
-        const parts = para.split(/(\*\*[^*]+\*\*)/g);
+        const parts = trimmed.split(/(\*\*[^*]+\*\*)/g);
         return (
           <p
             key={i}
@@ -327,7 +363,7 @@ export default function ArticlePage() {
 
               {/* Title */}
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white leading-tight mb-5">
-                {article.title}
+                {cleanHtml(article.title)}
               </h1>
 
               {/* Meta row */}
@@ -353,7 +389,7 @@ export default function ArticlePage() {
             {/* Lead / description */}
             <div className="px-6 sm:px-8 pt-6 pb-2">
               <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed font-medium border-l-4 border-primary-500 pl-4 italic">
-                {article.description}
+                {cleanHtml(article.description)}
               </p>
             </div>
 

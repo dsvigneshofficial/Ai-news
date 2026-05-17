@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { TrendingUp, Clock, ChevronRight } from 'lucide-react';
 import { useNews } from '@/context/NewsContext';
-import { formatDate, cn } from '@/lib/utils';
+import { formatDate, cn, cleanHtml } from '@/lib/utils';
 import { getCategoryLabel } from '@/lib/categories';
 import { Article } from '@/types/news';
 
@@ -76,11 +76,11 @@ function HeroCard({ article }: { article: Article }) {
         </div>
 
         <h3 className="text-xl lg:text-2xl font-bold text-white leading-snug mb-3 line-clamp-3 group-hover:text-primary-300 transition-colors">
-          {article.title}
+          {cleanHtml(article.title)}
         </h3>
 
         <p className="text-sm text-gray-300 line-clamp-2 mb-4 hidden sm:block">
-          {article.description}
+          {cleanHtml(article.description)}
         </p>
 
         <div className="flex items-center justify-between">
@@ -131,7 +131,7 @@ function SideCard({ article, rank }: { article: Article; rank: number }) {
       {/* Text */}
       <div className="flex flex-col justify-center min-w-0 flex-1">
         <h4 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors leading-snug">
-          {article.title}
+          {cleanHtml(article.title)}
         </h4>
         <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-400">
           <span className="font-medium text-primary-500 truncate">{article.source}</span>

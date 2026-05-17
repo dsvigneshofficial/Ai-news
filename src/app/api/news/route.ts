@@ -1,25 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCachedNews } from '@/lib/news-fetcher';
-import { fallbackArticles } from '@/lib/fallback-articles';
+import { fetchAllNews } from '@/lib/news-fetcher';
 import { Category } from '@/types/news';
+
+// Tell Next.js: never statically cache this route, always run it fresh
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
+    const { searchParams } = request.nextUrl;
     const category = searchParams.get('category') as Category | null;
-    const search = searchParams.get('search');
-    const id = searchParams.get('id');
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
-    const offset = parseInt(searchParams.get('offset') || '0', 10);
+    const search   = searchParams.get('search');
+    const id       = searchParams.get('id');
+    const limit    = Math.min(parseInt(searchParams.get('limit')  || '60', 10), 200);
+    const offset   = parseInt(searchParams.get('offset') || '0', 10);
 
-    let articles = await getCachedNews();
+    // Always fetch fresh from RSS/NewsAPI — no server-side memory cache
+    let articles = await fetchAllNews();
 
-    // Ensure we always have content — merge fallbacks if live fetch returned nothing
-    if (!articles || articles.length === 0) {
-      articles = fallbackArticles;
-    }
-
-    // Single article lookup by id
+    // Single-article lookup
     if (id) {
       const article = articles.find((a) => a.id === id);
       if (!article) {
@@ -28,30 +27,29 @@ export async function GET(request: NextRequest) {
       const related = articles
         .filter((a) => a.category === article.category && a.id !== article.id)
         .slice(0, 3);
-      return NextResponse.json({ article, related }, {
-        headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
-      });
-    }
-
-    // Filter by category
-    if (category && category !== 'all') {
-      articles = articles.filter((article) => article.category === category);
-    }
-
-    // Filter by search query
-    if (search) {
-      const query = search.toLowerCase();
-      articles = articles.filter(
-        (article) =>
-          article.title.toLowerCase().includes(query) ||
-          article.description.toLowerCase().includes(query) ||
-          article.source.toLowerCase().includes(query)
+      return NextResponse.json(
+        { article, related },
+        { headers: noStoreHeaders() }
       );
     }
 
-    const total = articles.length;
+    // Category filter
+    if (category && category !== 'all') {
+      articles = articles.filter((a) => a.category === category);
+    }
 
-    // Apply pagination
+    // Full-text search across title + description + source
+    if (search) {
+      const q = search.toLowerCase();
+      articles = articles.filter(
+        (a) =>
+          a.title.toLowerCase().includes(q) ||
+          a.description.toLowerCase().includes(q) ||
+          a.source.toLowerCase().includes(q)
+      );
+    }
+
+    const total    = articles.length;
     const paginated = articles.slice(offset, offset + limit);
 
     return NextResponse.json(
@@ -61,30 +59,23 @@ export async function GET(request: NextRequest) {
         page: Math.floor(offset / limit) + 1,
         limit,
         hasMore: offset + limit < total,
+        fetchedAt: new Date().toISOString(),
       },
-      {
-        headers: {
-          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
-        },
-      }
+      { headers: noStoreHeaders() }
     );
-  } catch (error) {
-    console.error('Error fetching news:', error);
-
-    // Even on error, return fallback articles so the UI always has content
+  } catch (err) {
+    console.error('[/api/news] Error:', err);
     return NextResponse.json(
-      {
-        articles: fallbackArticles,
-        total: fallbackArticles.length,
-        page: 1,
-        limit: fallbackArticles.length,
-        hasMore: false,
-        _fromFallback: true,
-      },
-      {
-        status: 200,
-        headers: { 'Cache-Control': 'no-store' },
-      }
+      { error: 'Failed to fetch news', articles: [], total: 0 },
+      { status: 500, headers: noStoreHeaders() }
     );
   }
+}
+
+/** Headers that prevent CDN / browser caching so every poll gets fresh data */
+function noStoreHeaders(): HeadersInit {
+  return {
+    'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+    Pragma: 'no-cache',
+  };
 }
